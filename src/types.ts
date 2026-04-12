@@ -3,7 +3,7 @@ export interface Country {
     population: number;
     region: string;
     capital: string;
-    falgs?: { svg: string, png: string };
+    flags?: { svg: string, png: string };
     alpha3Code: string;
     nativeName: string;
     subregion: string;
