@@ -3,6 +3,7 @@ import { UIRenderer } from './UIRender.js';
 class App {
     ui = new UIRenderer();
     allCountries = [];
+    listenersAttached = false; // To ensure we only attach search/filter listeners once
     constructor() {
         this.init();
         this.initTheme();
@@ -14,8 +15,12 @@ class App {
         this.showHomePage(this.allCountries);
     }
     showHomePage(countries) {
-        this.ui.renderHomePage(countries, (code) => this.showDetailPage(code));
-        this.setupSearchAndFilter();
+        this.ui.renderHomePageLayout();
+        this.ui.renderCountriesList(countries, (code) => this.showDetailPage(code));
+        if (!this.listenersAttached) {
+            this.setupSearchAndFilter();
+            this.listenersAttached = true;
+        }
     }
     showDetailPage(code) {
         const country = this.allCountries.find(c => c.alpha3Code === code);
@@ -28,24 +33,27 @@ class App {
     setupSearchAndFilter() {
         const input = document.getElementById('search-input');
         const filter = document.getElementById('region-filter');
+        if (!input || !filter)
+            return;
         const applyFilters = () => {
-            const searchTerm = input.value.toLowerCase();
+            const searchTerm = input.value.trim().toLowerCase();
             const region = filter.value;
             const filtered = this.allCountries.filter(c => {
-                const matchesSearch = c.name.toLowerCase().includes(searchTerm);
+                const countryName = (c.name || '').toLowerCase();
+                const matchesSearch = countryName.includes(searchTerm);
                 const matchesRegion = region === 'all' || c.region === region;
                 return matchesSearch && matchesRegion;
             });
-            // Re-render the grid only if needed (but implementation is simpler to re-render the HomePage)
-            this.ui.renderHomePage(filtered, (code) => this.showDetailPage(code));
+            // Use the UI renderer to update the list
+            this.ui.renderCountriesList(filtered, (code) => this.showDetailPage(code));
         };
-        input?.addEventListener('input', applyFilters);
-        filter?.addEventListener('change', applyFilters);
+        input.addEventListener('input', applyFilters);
+        filter.addEventListener('change', applyFilters);
     }
     initTheme() {
         const btn = document.getElementById('theme-toggle');
         btn?.addEventListener('click', () => {
-            const current = document.body.getAttribute('data-theme');
+            const current = document.body.getAttribute('data-theme') || 'light';
             document.body.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
         });
     }

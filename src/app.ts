@@ -5,6 +5,7 @@ import type { Country } from './types.js';
 class App {
   private ui = new UIRenderer();
   private allCountries: Country[] = [];
+  private listenersAttached = false; // To ensure we only attach search/filter listeners once
 
   constructor() {
     this.init();
@@ -19,48 +20,55 @@ class App {
   }
 
   private showHomePage(countries: Country[]) {
-    this.ui.renderHomePage(countries, (code) => this.showDetailPage(code));
-    this.setupSearchAndFilter();
+    this.ui.renderHomePageLayout();
+    this.ui.renderCountriesList(countries, (code) => this.showDetailPage(code));
+    if (!this.listenersAttached) {
+      this.setupSearchAndFilter();
+      this.listenersAttached = true;
+    }
   }
 
   private showDetailPage(code: string) {
     const country = this.allCountries.find(c => c.alpha3Code === code);
     if (country) {
       this.ui.renderDetailPage(
-        country, 
-        this.allCountries, 
+        country,
+        this.allCountries,
         () => this.showHomePage(this.allCountries), // Back button
         (newCode) => this.showDetailPage(newCode)     // Click on border
       );
     }
   }
 
-  private setupSearchAndFilter() {
-    const input = document.getElementById('search-input') as HTMLInputElement;
-    const filter = document.getElementById('region-filter') as HTMLSelectElement;
+  private setupSearchAndFilter(): void {
+    const input = document.getElementById('search-input') as HTMLInputElement | null;
+    const filter = document.getElementById('region-filter') as HTMLSelectElement | null;
+
+    if (!input || !filter) return;
 
     const applyFilters = () => {
-      const searchTerm = input.value.toLowerCase();
+      const searchTerm = input.value.trim().toLowerCase();
       const region = filter.value;
-      
+
       const filtered = this.allCountries.filter(c => {
-        const matchesSearch = c.name.toLowerCase().includes(searchTerm);
+        const countryName = (c.name || '').toLowerCase();
+        const matchesSearch = countryName.includes(searchTerm);
         const matchesRegion = region === 'all' || c.region === region;
         return matchesSearch && matchesRegion;
       });
 
-      // Re-render the grid only if needed (but implementation is simpler to re-render the HomePage)
-      this.ui.renderHomePage(filtered, (code) => this.showDetailPage(code));
+      // Use the UI renderer to update the list
+      this.ui.renderCountriesList(filtered, (code) => this.showDetailPage(code));
     };
 
-    input?.addEventListener('input', applyFilters);
-    filter?.addEventListener('change', applyFilters);
+    input.addEventListener('input', applyFilters);
+    filter.addEventListener('change', applyFilters);
   }
 
-  private initTheme() {
+  private initTheme(): void {
     const btn = document.getElementById('theme-toggle');
     btn?.addEventListener('click', () => {
-      const current = document.body.getAttribute('data-theme');
+      const current = document.body.getAttribute('data-theme') || 'light';
       document.body.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
     });
   }
